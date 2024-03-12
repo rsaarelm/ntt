@@ -1,0 +1,6 @@
+module ntt;
+import std.stdio;
+
+void main() {
+    print("Hello ntt");
+}

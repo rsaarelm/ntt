@@ -1,0 +1,2 @@
+build:
+    neat ntt.nt
