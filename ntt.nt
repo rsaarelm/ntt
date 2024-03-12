@@ -1,6 +1,61 @@
 module ntt;
+
+import std.process;
 import std.stdio;
+import std.string;
+
+bool is_ping(long avg_secs, long t) {
+  // This is the xorshift64 algorithm.
+
+  mut long t = t;
+  t ^= t << 13;
+  t ^= t >> 7;
+  t ^= t << 17;
+  return (t % avg_secs) == 0;
+}
+
+/// Unix time of next ping from now given average ping interval.
+long next_ping(long avg_secs, long now) {
+    mut long ret = now + 1;
+    while (!is_ping(avg_secs, ret)) ++ret;
+    return ret;
+}
+
+/// Unix time of previous ping from now given average ping interval.
+long prev_ping(long avg_secs, long now) {
+    mut long ret = now - 1;
+    while (!is_ping(avg_secs, ret)) --ret;
+    return ret;
+}
+
+long unix_time() {
+    return atoi(readback("date +%s"));
+}
+
+string formatted_time(long unix_time) {
+    return readback("date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'");
+}
+
+void sleep(long seconds) {
+    system("sleep $(seconds)");
+}
+
+/// Sleep until it's time to ping
+void cmd_sleep() {
+    long ping_interval_minutes = 45;
+
+    long start_time = unix_time();
+    long target_time = next_ping(ping_interval_minutes * 60, start_time);
+
+    // Don't try to sleep all the way to the target time at once, instead take
+    // short naps and keep watching the clock. The OS might get suspended at
+    // any time and that will screw up the timing of a long sleep.
+    while (unix_time() < target_time) {
+        sleep(10);
+    }
+}
 
 void main() {
-    print("Hello ntt");
+    // TODO Cmd parser, sleep at "sleep" cmd only.
+    cmd_sleep();
 }
