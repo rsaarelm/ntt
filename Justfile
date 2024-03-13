@@ -1,9 +1,9 @@
 build:
-    neat ntt.nt
+    neat -j ntt.nt
 
 test:
-    neat --unittest --no-main ntt.nt
-    ./ntt
+    neat -j --unittest --no-main ntt.nt -o test
+    ./test
 
 clean:
-    rm -f ./ntt ./.obj
+    rm -f ./ntt ./.obj ./test
