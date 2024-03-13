@@ -82,9 +82,8 @@ unittest {
 
 /// Sleep until it's time to ping
 void cmdSleep() {
-    print("Sleeping until next ping, average wake interval is $pingIntervalMinutes min");
-    long startTime = unixTime;
-    long targetTime = nextPing(pingIntervalMinutes * 60, startTime);
+    print("Sleeping until next ping, average ping interval is $pingIntervalMinutes min");
+    long targetTime = nextPing;
 
     // Don't try to sleep all the way to the target time at once, instead take
     // short naps and keep watching the clock. The OS might get suspended at
@@ -97,16 +96,18 @@ void cmdSleep() {
 }
 
 /// Unix time of next ping from now given average ping interval.
-long nextPing(long avgSecs, long now) {
-    mut long ret = now + 1;
-    while (!isPing(avgSecs, ret)) ++ret;
+long nextPing() {
+    long startTime = unixTime;
+    mut long ret = startTime + 1;
+    while (!isPing(pingIntervalMinutes * 60, ret)) ++ret;
     return ret;
 }
 
 /// Unix time of previous ping from now given average ping interval.
-long prevPing(long avgSecs, long now) {
-    mut long ret = now - 1;
-    while (!isPing(avgSecs, ret)) --ret;
+long prevPing() {
+    long startTime = unixTime;
+    mut long ret = startTime - 1;
+    while (!isPing(pingIntervalMinutes * 60, ret)) --ret;
     return ret;
 }
 
