@@ -4,6 +4,10 @@ import std.process;
 import std.stdio;
 import std.string;
 
+alias ping_interval_minutes = 45;
+
+extern(C) int sleep(int);
+
 bool is_ping(long avg_secs, long t) {
   // This is the xorshift64 algorithm.
 
@@ -36,26 +40,23 @@ string formatted_time(long unix_time) {
     return readback("date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'");
 }
 
-void sleep(long seconds) {
-    system("sleep $(seconds)");
-}
-
 /// Sleep until it's time to ping
 void cmd_sleep() {
-    long ping_interval_minutes = 45;
-
-    long start_time = unix_time();
+    print("Sleeping until next ping, average wake interval is $(ping_interval_minutes) min");
+    long start_time = unix_time;
     long target_time = next_ping(ping_interval_minutes * 60, start_time);
 
     // Don't try to sleep all the way to the target time at once, instead take
     // short naps and keep watching the clock. The OS might get suspended at
     // any time and that will screw up the timing of a long sleep.
-    while (unix_time() < target_time) {
+    while (unix_time < target_time) {
         sleep(10);
     }
+
+    print("Pinged at $(formatted_time(target_time)).");
 }
 
 void main() {
     // TODO Cmd parser, sleep at "sleep" cmd only.
-    cmd_sleep();
+    cmd_sleep;
 }
