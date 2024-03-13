@@ -1,5 +1,6 @@
 module ntt;
 
+macro import std.macro.assert;
 import std.process;
 import std.stdio;
 import std.string;
@@ -55,9 +56,21 @@ string formatted_time(long unix_time) =>
     "date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'".readback;
 
 (long | :else) parse_date(string datestring) {
+    if (datestring.strip() == "") {
+        return :else;
+    }
+
     return "date -d $(datestring) -u +%s".readback_err.case(
         int i: :else,
-        string s: s.atol.(:else if (that < 0 || that > 99999999999) else that));
+        string s: s.atol.(:else if (that <= 0 || that > 99999999999) else that));
+}
+
+unittest
+{
+    assert(parse_date("2006-01-02T15:04:05-0700") == 1136239445);
+    assert(parse_date("xyzzy") == :else);
+    assert(parse_date("") == :else);
+    assert(parse_date("9300-01-01") == :else);
 }
 
 long unix_time() => "date +%s".readback.atoi;
