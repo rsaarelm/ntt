@@ -4,6 +4,7 @@ macro import std.macro.assert;
 macro import std.macro.listcomprehension;
 
 import std.algorithm;
+import std.file;
 import std.process;
 import std.stdio;
 import std.string;
@@ -44,9 +45,19 @@ void cmdBreak(string[] args) {
     print("TODO");
 }
 
+Entry[] loadLog() {
+    mut Entry[] result;
+    for (line in logLines) {
+        result ~= Entry.fromString(line)? else continue;
+    }
+    return result;
+}
+
+string[] logLines() => logPath.readText.strip.split("\n") if logPath.exists else [];
+
 string logPath() {
     auto path = getEnv("XDG_DATA_HOME").notEmpty? else "$(getEnv("HOME"))/.local/share";
-    return "$(path)/ntt";
+    return "$(path)/ntt/work.log";
 }
 
 struct Entry {
