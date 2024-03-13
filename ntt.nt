@@ -139,7 +139,7 @@ string[] words(string s) => [a for a in s.split(" ") where !a.empty];
 
 (long | :else) parseScalar(string s, string unit) {
     string scalar = s[0 .. $ - unit.length] if s.endsWith(unit) else return :else;
-    return scalar.parseNum? else :else;
+    return scalar.parseNum;
 }
 
 unittest {
