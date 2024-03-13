@@ -54,9 +54,10 @@ bool is_ping(long avg_secs, long t) {
 string formatted_time(long unix_time) =>
     "date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'".readback;
 
-int parse_date(string datestring) {
+(int | :else) parse_date(string datestring) {
     return "date -d $(datestring) -u +%s".readback_err.case(
-        int i: -1,
+        int i: false,
+        // TODO: Still return false if atoi(s) < 0
         string s: atoi(s));
 }
 
