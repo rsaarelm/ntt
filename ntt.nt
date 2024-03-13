@@ -34,7 +34,21 @@ void usage() {
 
 /// Display today's work status.
 void cmdStatus() {
-    print("TODO");
+    auto log = loadLog;
+    auto unaccounted = log.unaccountedPings;
+
+    print("Average ping interval is $pingIntervalMinutes min");
+    if (unaccounted.empty) {
+        print("Nothing to do yet, wait for next ping");
+    } else if (!log.dayIsStarted) {
+        print("Nothing logged today yet.");
+        print("Last ping was at $(unaccounted[0].formatted)");
+    } else {
+        print("Unaccounted pings after last entry today:");
+        for (p in unaccounted) {
+            print("x $(p.formatted)");
+        }
+    }
 }
 
 void cmdWork(string[] args) {
@@ -93,10 +107,32 @@ unittest {
         :else);
 }
 
+/// Pings between latest entry and now (limited to today).
+long[] unaccountedPings(Entry[] entries) {
+    auto today = now.day;
+    auto limit = entries.latest;
+    mut long[] result;
+    mut long t = now.prevPing;
+    while (t > limit && t.day == today) {
+        result ~= t;
+        t = t.prevPing;
+    }
+
+    // TODO result.reverse();
+    return result;
+}
+
+/// Latest entry timestamp from list.
+// TODO: Don't trust that they're sorted, actually look at each.
+long latest(Entry[] entries) => entries[$ - 1].time if !entries.empty else 0;
+
+/// Return whether logging has started for today.
+bool dayIsStarted(Entry[] entries) => entries.latest.day == now.day;
+
 /// Sleep until it's time to ping
 void cmdSleep() {
     print("Sleeping until next ping, average ping interval is $pingIntervalMinutes min");
-    long targetTime = nextPing;
+    long targetTime = now.nextPing;
 
     // Don't try to sleep all the way to the target time at once, instead take
     // short naps and keep watching the clock. The OS might get suspended at
@@ -109,15 +145,15 @@ void cmdSleep() {
 }
 
 /// Unix time of next ping from now given average ping interval.
-long nextPing() {
-    mut long ret = now + 1;
+long nextPing(long t) {
+    mut long ret = t + 1;
     while (!isPing(pingIntervalMinutes * 60, ret)) ++ret;
     return ret;
 }
 
 /// Unix time of previous ping from now given average ping interval.
-long prevPing() {
-    mut long ret = now - 1;
+long prevPing(long t) {
+    mut long ret = t - 1;
     while (!isPing(pingIntervalMinutes * 60, ret)) --ret;
     return ret;
 }
