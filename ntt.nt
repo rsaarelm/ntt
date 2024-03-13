@@ -181,8 +181,7 @@ long[] unaccountedPings(Entry[] entries) {
 }
 
 /// Latest entry timestamp from list.
-// TODO: Don't trust that they're sorted, actually look at each.
-long latest(Entry[] entries) => entries[$ - 1].time if !entries.empty else 0;
+long latest(Entry[] entries) => [max(e.time) for e in entries] if !entries.empty else 0;
 
 /// Return whether logging has started for today.
 bool dayIsStarted(Entry[] entries) => entries.latest.day == now.day;
