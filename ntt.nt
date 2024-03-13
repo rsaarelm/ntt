@@ -68,7 +68,7 @@ struct Entry {
         return Entry(time, task, durationMin, words[3 .. $].join(" "));
     }
 
-    string toString() => "$(formattedTime(time))  $task  $(durationMin)min  $comment".strip;
+    string toString() => "$(time.formatted)  $task  $(durationMin)min  $comment".strip;
 }
 
 unittest {
@@ -88,25 +88,23 @@ void cmdSleep() {
     // Don't try to sleep all the way to the target time at once, instead take
     // short naps and keep watching the clock. The OS might get suspended at
     // any time and that will screw up the timing of a long sleep.
-    while (unixTime < targetTime) {
+    while (now < targetTime) {
         sleep(10);
     }
 
-    print("Pinged at $(formattedTime(targetTime)).");
+    print("Pinged at $(targetTime.formatted).");
 }
 
 /// Unix time of next ping from now given average ping interval.
 long nextPing() {
-    long startTime = unixTime;
-    mut long ret = startTime + 1;
+    mut long ret = now + 1;
     while (!isPing(pingIntervalMinutes * 60, ret)) ++ret;
     return ret;
 }
 
 /// Unix time of previous ping from now given average ping interval.
 long prevPing() {
-    long startTime = unixTime;
-    mut long ret = startTime - 1;
+    mut long ret = now - 1;
     while (!isPing(pingIntervalMinutes * 60, ret)) --ret;
     return ret;
 }
@@ -121,8 +119,8 @@ bool isPing(long avgSecs, long t) {
   return (t % avgSecs) == 0;
 }
 
-string formattedTime(long unixTime) =>
-    "date -d @$(unixTime) +'%Y-%m-%dT%H:%M:%S%z'".readback.strip;
+string formatted(long unixTime) =>
+    "date -d @$unixTime +'%Y-%m-%dT%H:%M:%S%z'".readback.strip;
 
 (long | :else) parseDate(string datestring) {
     if (datestring.strip == "") {
@@ -146,7 +144,10 @@ unittest
     assert(parseDate("9300-01-01") == :else);
 }
 
-long unixTime() => "date +%s".readback.atoi;
+long now() => "date +%s".readback.parseNum? else assert(false);
+
+/// Day of unix timestamp in current time zone.
+string day(long unixTime) => unixTime.formatted[0 .. 10];
 
 extern(C) int sleep(int);
 
