@@ -5,81 +5,81 @@ import std.process;
 import std.stdio;
 import std.string;
 
-alias ping_interval_minutes = 30;
+alias pingIntervalMinutes = 30;
 
 void main() {
     // TODO Cmd parser, sleep at "sleep" cmd only.
-    cmd_sleep;
+    cmdSleep;
 }
 
 /// Sleep until it's time to ping
-void cmd_sleep() {
-    print("Sleeping until next ping, average wake interval is $(ping_interval_minutes) min");
-    long start_time = unix_time;
-    long target_time = next_ping(ping_interval_minutes * 60, start_time);
+void cmdSleep() {
+    print("Sleeping until next ping, average wake interval is $(pingIntervalMinutes) min");
+    long startTime = unixTime;
+    long targetTime = nextPing(pingIntervalMinutes * 60, startTime);
 
     // Don't try to sleep all the way to the target time at once, instead take
     // short naps and keep watching the clock. The OS might get suspended at
     // any time and that will screw up the timing of a long sleep.
-    while (unix_time < target_time) {
+    while (unixTime < targetTime) {
         sleep(10);
     }
 
-    print("Pinged at $(formatted_time(target_time)).");
+    print("Pinged at $(formattedTime(targetTime)).");
 }
 
 /// Unix time of next ping from now given average ping interval.
-long next_ping(long avg_secs, long now) {
+long nextPing(long avgSecs, long now) {
     mut long ret = now + 1;
-    while (!is_ping(avg_secs, ret)) ++ret;
+    while (!isPing(avgSecs, ret)) ++ret;
     return ret;
 }
 
 /// Unix time of previous ping from now given average ping interval.
-long prev_ping(long avg_secs, long now) {
+long prevPing(long avgSecs, long now) {
     mut long ret = now - 1;
-    while (!is_ping(avg_secs, ret)) --ret;
+    while (!isPing(avgSecs, ret)) --ret;
     return ret;
 }
 
-bool is_ping(long avg_secs, long t) {
+bool isPing(long avgSecs, long t) {
   // This is the xorshift64 algorithm.
 
   mut long t = t;
   t ^= t << 13;
   t ^= t >> 7;
   t ^= t << 17;
-  return (t % avg_secs) == 0;
+  return (t % avgSecs) == 0;
 }
 
-string formatted_time(long unix_time) =>
-    "date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'".readback;
+string formattedTime(long unixTime) =>
+    "date -d @$(unixTime) +'%Y-%m-%dT%H:%M:%S%z'".readback;
 
-(long | :else) parse_date(string datestring) {
+(long | :else) parseDate(string datestring) {
     if (datestring.strip() == "") {
         return :else;
     }
 
-    return "date -d $(datestring) -u +%s".readback_err.case(
+    return "date -d $(datestring) -u +%s".readbackErr.case(
         int i: :else,
         string s: s.atol.(:else if (that <= 0 || that > 99999999999) else that));
 }
 
 unittest
 {
-    assert(parse_date("2006-01-02T15:04:05-0700") == 1136239445);
-    assert(parse_date("xyzzy") == :else);
-    assert(parse_date("") == :else);
-    assert(parse_date("9300-01-01") == :else);
+    assert(parseDate("2006-01-02T15:04:05-0700") == 1136239445);
+    assert(parseDate("xyzzy") == :else);
+    assert(parseDate("") == :else);
+    assert(parseDate("9300-01-01") == :else);
 }
 
-long unix_time() => "date +%s".readback.atoi;
+long unixTime() => "date +%s".readback.atoi;
 
 extern(C) int sleep(int);
 
 // A version of readback that handles error code return values.
 // FIXME: Replace with a stdlib version once one is available.
-(int | string) readback_err(string command) {
+(int | string) readbackErr(string command) {
     import std.file : readText, remove;
     import std.string : toStringz;
 
