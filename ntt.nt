@@ -22,11 +22,12 @@ struct Entry {
     string comment;
 
     static (Entry | :else) fromString(string s) {
+        print("fromString $(s)");
         auto words = s.split(" ");
         // Must have timestamp, task and duration.
         if (words.length < 3)
             return :else;
-        auto time = parseDate(words[0])?;
+        auto time = parseDate(words[0])?;  // This should complain about something something breakelse?
         return :else;
     }
 }
@@ -140,6 +141,7 @@ string[] words(string s) => [a for a in s.split(" ") where !a.empty];
 (int | :else) parseUnit(string s, string unit) {
     string scalar = s[0 .. $ - unit.length] if s.endsWith(unit) else return :else;
 
+    // TODO must be all numbers
     return :else;
 }
 
