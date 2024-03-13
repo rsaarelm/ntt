@@ -39,7 +39,7 @@ void cmdStatus() {
 
     print("Average ping interval is $pingIntervalMinutes min");
     if (unaccounted.empty) {
-        print("Nothing to do yet, wait for next ping");
+        print("Nothing to do yet, wait for next ping.");
     } else if (!log.dayIsStarted) {
         print("Nothing logged today yet.");
         print("Last ping was at $(unaccounted[0].formatted)");
@@ -52,11 +52,59 @@ void cmdStatus() {
 }
 
 void cmdWork(string[] args) {
-    print("TODO");
+    auto log = loadLog;
+    auto unaccounted = log.unaccountedPings;
+
+    if (unaccounted.empty) {
+        print("Nothing to do yet, wait for next ping.");
+        return;
+    }
+
+    mut auto task = "\"";  // Ditto mark.
+    mut auto comment = "";
+    if (args.length >= 1) {
+        // Special case, write comment directly.
+        if (args[0] == "--") {
+            comment = args[0 .. $].join(" ");
+        } else {
+            task = args[0];
+            comment = args[1 .. $].join(" ");
+        }
+    }
+
+    if (log.dayIsStarted) {
+        // Not the first entry, fill in breaks.
+        for (mut auto i = unaccounted.length - 1; i > 1; i--) {
+            Entry("#", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
+        }
+        if (unaccounted.length > 1)
+            print("Marked $(unaccounted.length - 1) breaks");
+    }
+
+    Entry("x", unaccounted[0], task, pingIntervalMinutes, comment).appendToLog;
+    print("Clocked $pingIntervalMinutes min work on $task for $(unaccounted[0].formatted)");
 }
 
 void cmdBreak(string[] args) {
-    print("TODO");
+    auto log = loadLog;
+    auto unaccounted = log.unaccountedPings;
+
+    if (unaccounted.empty) {
+        print("Nothing to do yet, wait for next ping.");
+        return;
+    }
+
+    if (log.dayIsStarted) {
+        // Not the first entry, fill in breaks.
+        for (mut auto i = unaccounted.length - 1; i > 1; i--) {
+            Entry("#", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
+        }
+        if (unaccounted.length > 1)
+            print("Marked $(unaccounted.length - 1) breaks");
+    }
+
+    Entry("#", unaccounted[0], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
+    print("Clocked break for $(unaccounted[0].formatted)");
 }
 
 Entry[] loadLog() {
@@ -96,6 +144,16 @@ struct Entry {
     }
 
     string toString() => "$marker $(time.formatted)  $task  $(durationMin)min  $comment".strip;
+
+    void appendToLog() {
+        if (!logPath.exists)
+            system("mkdir -p $(logPath.dirname)");
+        assert(logPath.dirname.exists);
+
+        // TODO Use append-to-file op instead of full rewrite
+        auto text = (logPath.readText() if logPath.exists else "") ~ "$(this)\n";
+        logPath.writeText(text);
+    }
 }
 
 unittest {
