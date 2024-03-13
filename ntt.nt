@@ -6,38 +6,9 @@ import std.string;
 
 alias ping_interval_minutes = 45;
 
-extern(C) int sleep(int);
-
-bool is_ping(long avg_secs, long t) {
-  // This is the xorshift64 algorithm.
-
-  mut long t = t;
-  t ^= t << 13;
-  t ^= t >> 7;
-  t ^= t << 17;
-  return (t % avg_secs) == 0;
-}
-
-/// Unix time of next ping from now given average ping interval.
-long next_ping(long avg_secs, long now) {
-    mut long ret = now + 1;
-    while (!is_ping(avg_secs, ret)) ++ret;
-    return ret;
-}
-
-/// Unix time of previous ping from now given average ping interval.
-long prev_ping(long avg_secs, long now) {
-    mut long ret = now - 1;
-    while (!is_ping(avg_secs, ret)) --ret;
-    return ret;
-}
-
-long unix_time() {
-    return atoi(readback("date +%s"));
-}
-
-string formatted_time(long unix_time) {
-    return readback("date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'");
+void main() {
+    // TODO Cmd parser, sleep at "sleep" cmd only.
+    cmd_sleep;
 }
 
 /// Sleep until it's time to ping
@@ -56,7 +27,38 @@ void cmd_sleep() {
     print("Pinged at $(formatted_time(target_time)).");
 }
 
-void main() {
-    // TODO Cmd parser, sleep at "sleep" cmd only.
-    cmd_sleep;
+/// Unix time of next ping from now given average ping interval.
+long next_ping(long avg_secs, long now) {
+    mut long ret = now + 1;
+    while (!is_ping(avg_secs, ret)) ++ret;
+    return ret;
 }
+
+/// Unix time of previous ping from now given average ping interval.
+long prev_ping(long avg_secs, long now) {
+    mut long ret = now - 1;
+    while (!is_ping(avg_secs, ret)) --ret;
+    return ret;
+}
+
+bool is_ping(long avg_secs, long t) {
+  // This is the xorshift64 algorithm.
+
+  mut long t = t;
+  t ^= t << 13;
+  t ^= t >> 7;
+  t ^= t << 17;
+  return (t % avg_secs) == 0;
+}
+
+string formatted_time(long unix_time) =>
+    "date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'".readback;
+
+int parse_date(string datestring) {
+    string time = readback("date -d $(datestring) -u +%s");
+    return atoi(time);
+}
+
+long unix_time() => "date +%s".readback.atoi;
+
+extern(C) int sleep(int);
