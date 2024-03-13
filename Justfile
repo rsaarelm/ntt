@@ -2,7 +2,7 @@ build:
     neat -j ntt.nt
 
 test:
-    neat -j --unittest --no-main ntt.nt -o test
+    neat -j --no-main ntt.nt -o test --unittest
     ./test
 
 clean:
