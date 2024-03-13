@@ -4,7 +4,7 @@ import std.process;
 import std.stdio;
 import std.string;
 
-alias ping_interval_minutes = 45;
+alias ping_interval_minutes = 30;
 
 void main() {
     // TODO Cmd parser, sleep at "sleep" cmd only.
