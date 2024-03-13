@@ -10,9 +10,38 @@ import std.string;
 
 alias pingIntervalMinutes = 30;
 
-void main() {
-    // TODO Cmd parser, sleep at "sleep" cmd only.
-    cmdSleep;
+void main(string[] args) {
+    if (args.length < 2 || args[1] == "status")
+        return cmdStatus;
+    else if (args[1] == "sleep")
+        cmdSleep;
+    else if (args[1] == "work" || args[1] == "w")
+        cmdWork(args[2 .. $]);
+    else if (args[1] == "break" || args[1] == "b")
+        cmdBreak(args[2 .. $]);
+    else
+        usage;
+}
+
+void usage() {
+    print("Usage: ntt <command> [<args>]");
+    print("    status                     Display today's work stats (default command)");
+    print("    sleep                      Delay until the time of next task ping");
+    print("    work ([task] ([message]))  Mark last ping as worked on task");
+    print("    break ([message])          Mark last ping as break time");
+}
+
+/// Display today's work status.
+void cmdStatus() {
+    print("TODO");
+}
+
+void cmdWork(string[] args) {
+    print("TODO");
+}
+
+void cmdBreak(string[] args) {
+    print("TODO");
 }
 
 string logPath() {
