@@ -15,6 +15,11 @@ void main() {
     cmdSleep;
 }
 
+string logPath() {
+    auto path = getEnv("XDG_DATA_HOME").notEmpty? else "$(getEnv("HOME"))/.local/share";
+    return "$(path)/ntt";
+}
+
 struct Entry {
     /// Time of entry in unix time, corresponds to pings.
     long time;
@@ -166,3 +171,5 @@ unittest {
     assert(parseNum("123gfp") == :else);
     assert(parseNum("a123") == :else);
 }
+
+alias notEmpty = a => a if !a.empty else :else;
