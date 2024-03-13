@@ -55,10 +55,31 @@ string formatted_time(long unix_time) =>
     "date -d @$(unix_time) +'%Y-%m-%dT%H:%M:%S%z'".readback;
 
 int parse_date(string datestring) {
-    string time = readback("date -d $(datestring) -u +%s");
-    return atoi(time);
+    return "date -d $(datestring) -u +%s".readback_err.case(
+        int i: -1,
+        string s: atoi(s));
 }
 
 long unix_time() => "date +%s".readback.atoi;
 
 extern(C) int sleep(int);
+
+// A version of readback that handles error code return values.
+// FIXME: Replace with a stdlib version once one is available.
+(int | string) readback_err(string command) {
+    import std.file : readText, remove;
+    import std.string : toStringz;
+
+    auto tmp = tmpnam(null).cToString;
+    // XXX: Add hack to pipe stderr to devnull, otherwise date will make noise
+    // about bad dates to our stderr.
+    int iret = neat_runtime_system_iret(command ~ " > " ~ tmp ~ " 2> /dev/null");
+    auto ret = readText(tmp);
+    remove(tmp);
+    if (iret)
+        return iret;
+    return ret;
+}
+
+private extern(C) char* tmpnam(char*);
+private extern(C) int neat_runtime_system_iret(string command);
