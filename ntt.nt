@@ -34,7 +34,7 @@ struct Entry {
         return Entry(time, task, durationMin, words[3 .. $].join(" "));
     }
 
-    string toString() => "$(formattedTime(time))  $task  $(durationMin)min  $comment".strip();
+    string toString() => "$(formattedTime(time))  $task  $(durationMin)min  $comment".strip;
 }
 
 unittest {
@@ -87,14 +87,14 @@ bool isPing(long avgSecs, long t) {
 }
 
 string formattedTime(long unixTime) =>
-    "date -d @$(unixTime) +'%Y-%m-%dT%H:%M:%S%z'".readback.strip();
+    "date -d @$(unixTime) +'%Y-%m-%dT%H:%M:%S%z'".readback.strip;
 
 (long | :else) parseDate(string datestring) {
-    if (datestring.strip() == "") {
+    if (datestring.strip == "") {
         return :else;
     }
 
-    if (datestring.strip().startsWith("#")) {
+    if (datestring.strip.startsWith("#")) {
         return :else;
     }
 
@@ -153,7 +153,7 @@ unittest {
 (long | :else) parseNum(string s) {
     import neat.runtime : atol;
 
-    auto s = s.strip();
+    auto s = s.strip;
     long ret = atol(s);
     return ret if "$ret" == s else :else;
 }
