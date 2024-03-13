@@ -1,6 +1,9 @@
 module ntt;
 
 macro import std.macro.assert;
+macro import std.macro.listcomprehension;
+
+import std.algorithm;
 import std.process;
 import std.stdio;
 import std.string;
@@ -12,9 +15,40 @@ void main() {
     cmdSleep;
 }
 
+struct Entry {
+    /// Time of entry in unix time, corresponds to pings.
+    long time;
+    string task;
+    long durationMin;
+    string comment;
+
+    static (Entry | :else) fromString(string s) {
+        auto words = s.words;
+        // Must have timestamp, task and duration.
+        if (words.length < 3)
+            return :else;
+        auto time = parseDate(words[0])? else return :else;
+        auto task = words[1];
+        auto durationMin = words[2].parseScalar("min")? else return :else;
+
+        return Entry(time, task, durationMin, words[3 .. $].join(" "));
+    }
+
+    string toString() => "$(formattedTime(time))  $task  $(durationMin)min  $comment".strip();
+}
+
+unittest {
+    assert(Entry.fromString("") == :else);
+    assert(Entry.fromString("# Some comment dunno") == :else);
+    assert(Entry.fromString("2024-03-13T10:09:06+0200  ntt.base  15min") ==
+        Entry(1710317346, "ntt.base", 15, ""));
+    assert(Entry.fromString("2024-03-13T10:09:06+0200  ntt.base  15nmin") ==
+        :else);
+}
+
 /// Sleep until it's time to ping
 void cmdSleep() {
-    print("Sleeping until next ping, average wake interval is $(pingIntervalMinutes) min");
+    print("Sleeping until next ping, average wake interval is $pingIntervalMinutes min");
     long startTime = unixTime;
     long targetTime = nextPing(pingIntervalMinutes * 60, startTime);
 
@@ -53,16 +87,20 @@ bool isPing(long avgSecs, long t) {
 }
 
 string formattedTime(long unixTime) =>
-    "date -d @$(unixTime) +'%Y-%m-%dT%H:%M:%S%z'".readback;
+    "date -d @$(unixTime) +'%Y-%m-%dT%H:%M:%S%z'".readback.strip();
 
 (long | :else) parseDate(string datestring) {
     if (datestring.strip() == "") {
         return :else;
     }
 
-    return "date -d $(datestring) -u +%s".readbackErr.case(
+    if (datestring.strip().startsWith("#")) {
+        return :else;
+    }
+
+    return "date -d $datestring -u +%s".readbackErr.case(
         int i: :else,
-        string s: s.atol.(:else if (that <= 0 || that > 99999999999) else that));
+        string s: s.parseNum?.(:else if (that <= 0 || that > 99999999999) else that));
 }
 
 unittest
@@ -97,8 +135,34 @@ extern(C) int sleep(int);
 private extern(C) char* tmpnam(char*);
 private extern(C) int neat_runtime_system_iret(string command);
 
-// FIXME: Should be in stdlib.
-long atol(string s) {
+string[] words(string s) => [a for a in s.split(" ") where !a.empty];
+
+(long | :else) parseScalar(string s, string unit) {
+    string scalar = s[0 .. $ - unit.length] if s.endsWith(unit) else return :else;
+    return scalar.parseNum? else :else;
+}
+
+unittest {
+    assert("15min".parseScalar("min") == 15);
+    assert("".parseScalar("min") == :else);
+    assert("15".parseScalar("min") == :else);
+    assert("15nmin".parseScalar("min") == :else);
+}
+
+/// Robust integer parser.
+(long | :else) parseNum(string s) {
     import neat.runtime : atol;
-    return atol(s);
+
+    auto s = s.strip();
+    long ret = atol(s);
+    return ret if "$ret" == s else :else;
+}
+
+unittest {
+    assert(parseNum("123") == 123);
+    assert(parseNum("-123") == -123);
+    assert(parseNum("-") == :else);
+    assert(parseNum("") == :else);
+    assert(parseNum("123gfp") == :else);
+    assert(parseNum("a123") == :else);
 }
