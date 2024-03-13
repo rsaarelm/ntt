@@ -62,6 +62,7 @@ string logPath() {
 
 struct Entry {
     /// Time of entry in unix time, corresponds to pings.
+    string marker;
     long time;
     string task;
     long durationMin;
@@ -69,25 +70,26 @@ struct Entry {
 
     static (Entry | :else) fromString(string s) {
         auto words = s.words;
-        // Must have timestamp, task and duration.
-        if (words.length < 3)
+        // Must have marker, timestamp, task and duration.
+        if (words.length < 4)
             return :else;
-        auto time = parseDate(words[0])? else return :else;
-        auto task = words[1];
-        auto durationMin = words[2].parseScalar("min")? else return :else;
+        auto marker = words[0];
+        auto time = parseDate(words[1])? else return :else;
+        auto task = words[2];
+        auto durationMin = words[3].parseScalar("min")? else return :else;
 
-        return Entry(time, task, durationMin, words[3 .. $].join(" "));
+        return Entry(marker, time, task, durationMin, words[4 .. $].join(" "));
     }
 
-    string toString() => "$(time.formatted)  $task  $(durationMin)min  $comment".strip;
+    string toString() => "$marker $(time.formatted)  $task  $(durationMin)min  $comment".strip;
 }
 
 unittest {
     assert(Entry.fromString("") == :else);
     assert(Entry.fromString("# Some comment dunno") == :else);
-    assert(Entry.fromString("2024-03-13T10:09:06+0200  ntt.base  15min") ==
-        Entry(1710317346, "ntt.base", 15, ""));
-    assert(Entry.fromString("2024-03-13T10:09:06+0200  ntt.base  15nmin") ==
+    assert(Entry.fromString("x 2024-03-13T10:09:06+0200  ntt.base  15min") ==
+        Entry("x", 1710317346, "ntt.base", 15, ""));
+    assert(Entry.fromString("x 2024-03-13T10:09:06+0200  ntt.base  15nmin") ==
         :else);
 }
 
