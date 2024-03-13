@@ -1,6 +1,8 @@
 module ntt;
 
 macro import std.macro.assert;
+macro import std.macro.listcomprehension;
+
 import std.process;
 import std.stdio;
 import std.string;
@@ -10,6 +12,32 @@ alias pingIntervalMinutes = 30;
 void main() {
     // TODO Cmd parser, sleep at "sleep" cmd only.
     cmdSleep;
+}
+
+struct Entry {
+    /// Time of entry in unix time, corresponds to pings.
+    long time;
+    string task;
+    int durationMin;
+    string comment;
+
+    static (Entry | :else) fromString(string s) {
+        auto words = s.split(" ");
+        // Must have timestamp, task and duration.
+        if (words.length < 3)
+            return :else;
+        auto time = parseDate(words[0])?;
+        return :else;
+    }
+}
+
+unittest {
+    assert(Entry.fromString("") == :else);
+    assert(Entry.fromString("# Some comment dunno") == :else);
+    assert(Entry.fromString("2024-03-13T10:09:06+0200  ntt.base  15min") ==
+        Entry(12345, "ntt.base", 15, ""));
+    assert(Entry.fromString("2024-03-13T10:09:06+0200  ntt.base  15nmin") ==
+        :else);
 }
 
 /// Sleep until it's time to ping
@@ -60,6 +88,10 @@ string formattedTime(long unixTime) =>
         return :else;
     }
 
+    if (datestring.strip().startsWith("#")) {
+        return :else;
+    }
+
     return "date -d $(datestring) -u +%s".readbackErr.case(
         int i: :else,
         string s: s.atol.(:else if (that <= 0 || that > 99999999999) else that));
@@ -101,4 +133,19 @@ private extern(C) int neat_runtime_system_iret(string command);
 long atol(string s) {
     import neat.runtime : atol;
     return atol(s);
+}
+
+string[] words(string s) => [a for a in s.split(" ") where !a.empty];
+
+(int | :else) parseUnit(string s, string unit) {
+    string scalar = s[0 .. $ - unit.length] if s.endsWith(unit) else return :else;
+
+    return :else;
+}
+
+unittest {
+    assert("15min".parseUnit("min") == 15);
+    assert("".parseUnit("min") == :else);
+    assert("15".parseUnit("min") == :else);
+    assert("15nmin".parseUnit("min") == :else);
 }
