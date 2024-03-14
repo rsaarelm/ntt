@@ -20,6 +20,8 @@ void main(string[] args) {
         cmdWork(args[2 .. $]);
     else if (args[1] == "break" || args[1] == "b")
         cmdBreak(args[2 .. $]);
+    else if (args[1] == "msg")
+        cmdMsg(args[2 .. $]);
     else
         usage;
 }
@@ -30,6 +32,7 @@ void usage() {
     print("    sleep                      Delay until the time of next task ping");
     print("    work ([task] ([message]))  Mark last ping as worked on task");
     print("    break ([message])          Mark last ping as break time");
+    print("    msg message                Leave an arbitrary comment timestamped with current time");
 }
 
 /// Display today's work status.
@@ -105,6 +108,20 @@ void cmdBreak(string[] args) {
 
     Entry("-", unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
     print("Clocked break for $(unaccounted[$ - 1].formatted)");
+}
+
+void cmdMsg(string[] args) {
+    if (args.empty) {
+        print("No message text, aborting");
+    }
+
+    auto msg = "# $(now.formatted)  $(args[0 .. $].join(" "))";
+
+    // TODO Use append-to-file op instead of full rewrite
+    auto text = (logPath.readText() if logPath.exists else "") ~ "$msg\n";
+    logPath.writeText(text);
+
+    print("Logged $msg");
 }
 
 Entry[] loadLog() {
