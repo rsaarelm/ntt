@@ -1,11 +1,11 @@
 # ntt - Neat Time Tagger
 
 Stochastic time tracker similar to [tagti.me](http://tagti.me/).
-Written in [Neat](https://neat-lang.github.io/), unless we're in the future you probably need to manually install a Neat compiler.
+Written in [Neat](https://neat-lang.github.io/), it's not very common yet so the Makefile includes a compiler bootstrapping process.
 
 ## How to use it
 
-Compile `ntt` (with `just build`) and put it somewhere in your path, then start `ntt-daemon.sh` in a shell when you work.
+Compile `ntt` by running `make` (you need to have `gcc` installed) and put it somewhere in your path, then start `ntt-daemon.sh` in a shell when you work.
 The daemon will alert you at random intervals.
 At each interval, if you were working, type `ntt task [id] [optional comment]` on command line (if you omit the id, it'll reuse the one from your previous task entry).
 If you were taking a break, type `ntt break [optional comment]`, or just ignore the alert.
