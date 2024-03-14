@@ -20,8 +20,8 @@ void main(string[] args) {
         return cmdStatus(args[2 .. $]);
     else if (args[1] == "sleep")
         cmdSleep;
-    else if (args[1] == "work" || args[1] == "w")
-        cmdWork(args[2 .. $]);
+    else if (args[1] == "task" || args[1] == "t")
+        cmdTask(args[2 .. $]);
     else if (args[1] == "break" || args[1] == "b")
         cmdBreak(args[2 .. $]);
     else if (args[1] == "export")
@@ -34,16 +34,15 @@ void main(string[] args) {
 
 void usage() {
     print("Usage: ntt <command> [<args>]");
-    print("    status                     Display today's work stats (default command)");
+    print("    status                     Display current status (default command)");
     print("      --minimal                  Display only unaccounted ping count");
     print("    sleep                      Delay until the time of next task ping");
-    print("    work ([task] ([message]))  Mark last ping as worked on task");
+    print("    task ([id] ([message]))    Mark last ping as worked on task");
     print("    break ([message])          Mark last ping as break time");
     print("    export                     Print export in timedot format to stdout");
     print("    msg message                Leave an arbitrary comment timestamped with current time");
 }
 
-/// Display today's work status.
 void cmdStatus(string[] args) {
     auto parser = new UnixArgParser;
     parser.add("m", "minimal", :noArg, "Display only unaccounted ping count");
@@ -77,7 +76,7 @@ void cmdStatus(string[] args) {
     }
 }
 
-void cmdWork(string[] args) {
+void cmdTask(string[] args) {
     auto log = loadLog;
     auto unaccounted = log.unaccountedPings;
 
@@ -108,7 +107,7 @@ void cmdWork(string[] args) {
     }
 
     Entry("x", unaccounted[$ - 1], task, pingIntervalMinutes, comment).appendToLog;
-    print("Clocked $pingIntervalMinutes min work on $task for $(unaccounted[$ - 1].formatted)");
+    print("Clocked $pingIntervalMinutes min on $task for $(unaccounted[$ - 1].formatted)");
 }
 
 void cmdBreak(string[] args) {
@@ -217,7 +216,7 @@ string[] logLines() => logPath.readText.strip.split("\n") if logPath.exists else
 
 string logPath() {
     auto path = getEnv("XDG_DATA_HOME").notEmpty? else "$(getEnv("HOME"))/.local/share";
-    return "$(path)/ntt/work.log";
+    return "$(path)/ntt/time.log";
 }
 
 struct Entry {
