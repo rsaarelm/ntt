@@ -75,7 +75,7 @@ void cmdWork(string[] args) {
     if (log.dayIsStarted) {
         // Not the first entry, fill in breaks.
         for (auto i in 0 .. unaccounted.length - 1) {
-            Entry("#", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
+            Entry("-", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
             print("Marked $(unaccounted.length - 1) breaks");
@@ -97,13 +97,13 @@ void cmdBreak(string[] args) {
     if (log.dayIsStarted) {
         // Not the first entry, fill in breaks.
         for (auto i in 0 .. unaccounted.length - 1) {
-            Entry("#", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
+            Entry("-", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
             print("Marked $(unaccounted.length - 1) breaks");
     }
 
-    Entry("#", unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
+    Entry("-", unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
     print("Clocked break for $(unaccounted[$ - 1].formatted)");
 }
 
