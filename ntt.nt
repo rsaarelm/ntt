@@ -41,7 +41,7 @@ void cmdStatus() {
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
     } else if (!log.dayIsStarted) {
-        print("Nothing logged today yet.");
+        print("Nothing logged today yet, tag the last ping to start working.");
         print("Last ping was at $(unaccounted[0].formatted)");
     } else {
         print("Unaccounted pings after last entry today:");
