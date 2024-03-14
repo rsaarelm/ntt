@@ -24,6 +24,8 @@ void main(string[] args) {
         cmdWork(args[2 .. $]);
     else if (args[1] == "break" || args[1] == "b")
         cmdBreak(args[2 .. $]);
+    else if (args[1] == "export")
+        cmdExport;
     else if (args[1] == "msg")
         cmdMsg(args[2 .. $]);
     else
@@ -37,6 +39,7 @@ void usage() {
     print("    sleep                      Delay until the time of next task ping");
     print("    work ([task] ([message]))  Mark last ping as worked on task");
     print("    break ([message])          Mark last ping as break time");
+    print("    export                     Print export in timedot format to stdout");
     print("    msg message                Leave an arbitrary comment timestamped with current time");
 }
 
@@ -128,6 +131,51 @@ void cmdBreak(string[] args) {
 
     Entry("-", unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
     print("Clocked break for $(unaccounted[$ - 1].formatted)");
+}
+
+void cmdExport() {
+    auto log = loadLog;
+
+    mut long[string][string] days;
+
+    // Build a histogram.
+    for (entry in log) {
+        if (!entry.isTask)
+            continue;
+
+        auto day = entry.time.day;
+
+        // XXX: Nested hashmap jank ahead.
+        long[string] empty;
+        mut auto dayBin = days.require(day, empty);
+        dayBin[entry.task] = dayBin.get(entry.task, 0) + entry.durationMin;
+        days[day] = dayBin;
+    }
+
+    // Print out the timedots.
+    for (day in days.keys) {
+        print("$day");
+
+        auto dotColumn = [max task.length for task in days[day].keys] + 2;
+        for (task in days[day].keys) {
+            prit("$task");
+            for (auto i in 0..(dotColumn - task.length))
+                prit(" ");
+
+            // Print a dot for every 15 minutes (crummy integer rounding to
+            // closest).
+            long nDots = (days[day][task] + 8) / 15;
+
+            for (i in 0..nDots) {
+                if (i > 0 && i % 4 == 0)
+                    prit(" ");
+                prit(".");
+            }
+            print("");
+        }
+
+        print("");
+    }
 }
 
 void cmdMsg(string[] args) {
@@ -371,3 +419,14 @@ unittest {
 }
 
 alias notEmpty = a => a if !a.empty else :else;
+
+/// Print without \n
+void prit(string str) {
+    import neat.runtime.stdlib : fflush, printf,
+        neat_runtime_lock_stdout, neat_runtime_unlock_stdout;
+
+    neat_runtime_lock_stdout;
+    printf("%.*s".ptr, cast(int) str.length, str.ptr);
+    fflush(stdout);
+    neat_runtime_unlock_stdout;
+}
