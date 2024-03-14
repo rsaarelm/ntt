@@ -9,7 +9,7 @@ import std.process;
 import std.stdio;
 import std.string;
 
-alias pingIntervalMinutes = 30;
+alias pingIntervalMinutes = 45;
 
 void main(string[] args) {
     if (args.length < 2 || args[1] == "status")

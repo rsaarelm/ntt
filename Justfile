@@ -6,4 +6,4 @@ test:
     ./test
 
 clean:
-    rm -f ./ntt ./.obj ./test
+    rm -rf ./ntt ./.obj ./test
