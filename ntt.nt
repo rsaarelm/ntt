@@ -309,4 +309,14 @@ unittest {
     assert(parseNum("a123") == :else);
 }
 
+T[] reversed(T)(T[] xs) => [xs[$ - i - 1] for i in 0..xs.length];
+
+unittest {
+    int[] empty = [];
+    assert(reversed(empty) == []);
+
+    assert(reversed([1, 2, 3]) == [3, 2, 1]);
+    assert(reversed([1, 2, 3, 4]) == [4, 3, 2, 1]);
+}
+
 alias notEmpty = a => a if !a.empty else :else;
