@@ -4,6 +4,8 @@ macro import std.macro.assert;
 macro import std.macro.listcomprehension;
 
 import std.algorithm;
+import std.argparse;
+import std.error;
 import std.file;
 import std.process;
 import std.stdio;
@@ -12,8 +14,10 @@ import std.string;
 alias pingIntervalMinutes = 45;
 
 void main(string[] args) {
-    if (args.length < 2 || args[1] == "status")
-        return cmdStatus;
+    if (args.length < 2)
+        return cmdStatus(args[1 .. $]);
+    else if (args[1] == "status")
+        return cmdStatus(args[2 .. $]);
     else if (args[1] == "sleep")
         cmdSleep;
     else if (args[1] == "work" || args[1] == "w")
@@ -29,6 +33,7 @@ void main(string[] args) {
 void usage() {
     print("Usage: ntt <command> [<args>]");
     print("    status                     Display today's work stats (default command)");
+    print("      --minimal                  Display only unaccounted ping count");
     print("    sleep                      Delay until the time of next task ping");
     print("    work ([task] ([message]))  Mark last ping as worked on task");
     print("    break ([message])          Mark last ping as break time");
@@ -36,9 +41,24 @@ void usage() {
 }
 
 /// Display today's work status.
-void cmdStatus() {
+void cmdStatus(string[] args) {
+    auto parser = new UnixArgParser;
+    parser.add("m", "minimal", :noArg, "Display only unaccounted ping count");
+
+    // TODO: Print usage instead of just crashing (need to rewrite case block
+    // to allow multi-statement response)
+    auto result = parser.parse(args)
+        .case(Error: assert(false));
+
+
     auto log = loadLog;
     auto unaccounted = log.unaccountedPings;
+
+    if (result.has("minimal")) {
+        if (!unaccounted.empty)
+            print("$(unaccounted.length)");
+        return;
+    }
 
     print("Average ping interval is $pingIntervalMinutes min");
     if (unaccounted.empty) {
