@@ -109,8 +109,21 @@ void cmdBreak(string[] args) {
 
 Entry[] loadLog() {
     mut Entry[] result;
+
+    mut auto dittoTask = "unknown-task";
+
     for (line in logLines) {
-        result ~= Entry.fromString(line)? else continue;
+        mut auto entry = Entry.fromString(line)? else continue;
+
+        // Convert ditto marks into task names.
+        if (entry.isTask) {
+            if (entry.task == "\"")
+                entry.task = dittoTask;
+            else
+                dittoTask = entry.task;
+        }
+
+        result ~= entry;
     }
     return result;
 }
@@ -144,6 +157,8 @@ struct Entry {
     }
 
     string toString() => "$marker $(time.formatted)  $task  $(durationMin)min  $comment".strip;
+
+    bool isTask() => marker == "x" && task != "break";
 
     void appendToLog() {
         if (!logPath.exists)
