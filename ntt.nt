@@ -42,7 +42,7 @@ void cmdStatus() {
         print("Nothing to do yet, wait for next ping.");
     } else if (!log.dayIsStarted) {
         print("Nothing logged today yet, tag the last ping to start working.");
-        print("Last ping was at $(unaccounted[0].formatted)");
+        print("Last ping was at $(unaccounted[$ - 1].formatted)");
     } else {
         print("Unaccounted pings after last entry today:");
         for (p in unaccounted) {
@@ -74,15 +74,15 @@ void cmdWork(string[] args) {
 
     if (log.dayIsStarted) {
         // Not the first entry, fill in breaks.
-        for (mut auto i = unaccounted.length - 1; i > 1; i--) {
+        for (auto i in 0 .. unaccounted.length - 1) {
             Entry("#", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
             print("Marked $(unaccounted.length - 1) breaks");
     }
 
-    Entry("x", unaccounted[0], task, pingIntervalMinutes, comment).appendToLog;
-    print("Clocked $pingIntervalMinutes min work on $task for $(unaccounted[0].formatted)");
+    Entry("x", unaccounted[$ - 1], task, pingIntervalMinutes, comment).appendToLog;
+    print("Clocked $pingIntervalMinutes min work on $task for $(unaccounted[$ - 1].formatted)");
 }
 
 void cmdBreak(string[] args) {
@@ -96,15 +96,15 @@ void cmdBreak(string[] args) {
 
     if (log.dayIsStarted) {
         // Not the first entry, fill in breaks.
-        for (mut auto i = unaccounted.length - 1; i > 1; i--) {
+        for (auto i in 0 .. unaccounted.length - 1) {
             Entry("#", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
             print("Marked $(unaccounted.length - 1) breaks");
     }
 
-    Entry("#", unaccounted[0], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
-    print("Clocked break for $(unaccounted[0].formatted)");
+    Entry("#", unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
+    print("Clocked break for $(unaccounted[$ - 1].formatted)");
 }
 
 Entry[] loadLog() {
@@ -176,8 +176,7 @@ long[] unaccountedPings(Entry[] entries) {
         t = t.prevPing;
     }
 
-    // TODO result.reverse();
-    return result;
+    return result.reversed;
 }
 
 /// Latest entry timestamp from list.
@@ -307,6 +306,16 @@ unittest {
     assert(parseNum("") == :else);
     assert(parseNum("123gfp") == :else);
     assert(parseNum("a123") == :else);
+}
+
+T[] reversed(T)(T[] xs) => [xs[$ - i - 1] for i in 0..xs.length];
+
+unittest {
+    int[] empty = [];   // Need to use a var so the generic type is fixed.
+    assert(reversed(empty) == empty);
+
+    assert(reversed([1, 2, 3]) == [3, 2, 1]);
+    assert(reversed([1, 2, 3, 4]) == [4, 3, 2, 1]);
 }
 
 alias notEmpty = a => a if !a.empty else :else;
