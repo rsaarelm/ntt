@@ -31,9 +31,10 @@ void usage() {
     print("Usage: ntt <command> [<args>]");
     print("    status                     Display current status (default command)");
     print("      --minimal                  Display only unaccounted ping count");
-    print("    sleep                      Delay until the time of next task ping");
     print("    task [id] ([message])      Mark last ping as worked on task [id]");
     print("    break ([message])          Mark last ping as break time");
+    print("");
+    print("    sleep                      Delay until the time of next task ping");
 }
 
 void cmdStatus(string[] args) {
