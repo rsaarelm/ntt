@@ -3,7 +3,6 @@ module ntt;
 macro import std.macro.assert;
 macro import std.macro.listcomprehension;
 
-import std.algorithm;
 import std.argparse;
 import std.error;
 import std.file;
@@ -24,10 +23,6 @@ void main(string[] args) {
         cmdTask(args[2 .. $]);
     else if (args[1] == "break" || args[1] == "b")
         cmdBreak(args[2 .. $]);
-    else if (args[1] == "export")
-        cmdExport;
-    else if (args[1] == "msg")
-        cmdMsg(args[2 .. $]);
     else
         usage;
 }
@@ -37,10 +32,8 @@ void usage() {
     print("    status                     Display current status (default command)");
     print("      --minimal                  Display only unaccounted ping count");
     print("    sleep                      Delay until the time of next task ping");
-    print("    task ([id] ([message]))    Mark last ping as worked on task");
+    print("    task [id] ([message])      Mark last ping as worked on task [id]");
     print("    break ([message])          Mark last ping as break time");
-    print("    export                     Print export in timedot format to stdout");
-    print("    msg message                Leave an arbitrary comment timestamped with current time");
 }
 
 void cmdStatus(string[] args) {
@@ -52,9 +45,8 @@ void cmdStatus(string[] args) {
     auto result = parser.parse(args)
         .case(Error: assert(false));
 
-
-    auto log = loadLog;
-    auto unaccounted = log.unaccountedPings;
+    auto pings = logPath.readLines.pings;
+    auto unaccounted = pings.unaccountedPings;
 
     if (result.has("minimal")) {
         if (!unaccounted.empty)
@@ -65,184 +57,87 @@ void cmdStatus(string[] args) {
     print("Average ping interval is $pingIntervalMinutes min");
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
-    } else if (!log.dayIsStarted) {
+    } else if (!pings.dayIsStarted) {
         print("Nothing logged today yet, tag the last ping to start working.");
-        print("Last ping was at $(unaccounted[$ - 1].formatted)");
     } else {
         print("Unaccounted pings after last entry today:");
         for (p in unaccounted) {
-            print("x $(p.formatted)");
+            print("* $(p.formatTime("%H:%M:%S"))");
         }
     }
 }
 
 void cmdTask(string[] args) {
-    auto log = loadLog;
-    auto unaccounted = log.unaccountedPings;
+    if (args.empty) {
+        usage();
+        return;
+    }
+
+    auto pings = logPath.readLines.pings;
+    auto unaccounted = pings.unaccountedPings;
 
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
         return;
     }
 
-    mut auto task = "\"";  // Ditto mark.
-    mut auto comment = "";
-    if (args.length >= 1) {
-        // Special case, write comment directly.
-        if (args[0] == "--") {
-            comment = args[0 .. $].join(" ");
-        } else {
-            task = args[0];
-            comment = args[1 .. $].join(" ");
-        }
-    }
-
-    if (log.dayIsStarted) {
+    if (pings.dayIsStarted) {
         // Not the first entry, fill in breaks.
         for (auto i in 0 .. unaccounted.length - 1) {
-            Entry("-", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
+            Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
-            print("Marked $(unaccounted.length - 1) breaks");
+            print("Added $(unaccounted.length - 1) breaks");
     }
 
-    Entry("x", unaccounted[$ - 1], task, pingIntervalMinutes, comment).appendToLog;
-    print("Clocked $pingIntervalMinutes min on $task for $(unaccounted[$ - 1].formatted)");
+    Entry(unaccounted[$ - 1], args[0], pingIntervalMinutes, args[1 .. $].join(" ")).appendToLog;
+    print("Clocked $(pingIntervalMinutes)m on $(args[0]) at $(unaccounted[$ - 1].formatTime("%H:%M:%S"))");
 }
 
 void cmdBreak(string[] args) {
-    auto log = loadLog;
-    auto unaccounted = log.unaccountedPings;
+    auto pings = logPath.readLines.pings;
+    auto unaccounted = pings.unaccountedPings;
 
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
         return;
     }
 
-    if (log.dayIsStarted) {
+    if (pings.dayIsStarted) {
         // Not the first entry, fill in breaks.
         for (auto i in 0 .. unaccounted.length - 1) {
-            Entry("-", unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
+            Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
-            print("Marked $(unaccounted.length - 1) breaks");
+            print("Added $(unaccounted.length - 1) breaks");
     }
 
-    Entry("-", unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
-    print("Clocked break for $(unaccounted[$ - 1].formatted)");
+    Entry(unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
+    print("Clocked break at $(unaccounted[$ - 1].formatTime("%H:%M:%S"))");
 }
 
-void cmdExport() {
-    auto log = loadLog;
+string[] readLines(string path) => path.readText.strip.split("\n") if path.exists else [];
 
-    mut long[string][string] days;
-
-    // Build a histogram.
-    for (entry in log) {
-        if (!entry.isTask)
-            continue;
-
-        auto day = entry.time.day;
-
-        // XXX: Nested hashmap jank ahead.
-        long[string] empty;
-        mut auto dayBin = days.require(day, empty);
-        dayBin[entry.task] = dayBin.get(entry.task, 0) + entry.durationMin;
-        days[day] = dayBin;
-    }
-
-    // Print out the timedots.
-    for (day in days.keys) {
-        print("$day");
-
-        auto dotColumn = [max task.length for task in days[day].keys] + 2;
-        for (task in days[day].keys) {
-            prit("$task");
-            for (auto i in 0..(dotColumn - task.length))
-                prit(" ");
-
-            // Print a dot for every 15 minutes (crummy integer rounding to
-            // closest).
-            long nDots = (days[day][task] + 8) / 15;
-
-            for (i in 0..nDots) {
-                if (i > 0 && i % 4 == 0)
-                    prit(" ");
-                prit(".");
-            }
-            print("");
-        }
-
-        print("");
-    }
-}
-
-void cmdMsg(string[] args) {
-    if (args.empty) {
-        print("No message text, aborting");
-    }
-
-    auto msg = "# $(now.formatted)  $(args[0 .. $].join(" "))";
-
-    // TODO Use append-to-file op instead of full rewrite
-    auto text = (logPath.readText() if logPath.exists else "") ~ "$msg\n";
-    logPath.writeText(text);
-
-    print("Logged $msg");
-}
-
-Entry[] loadLog() {
-    mut Entry[] result;
-
-    mut auto dittoTask = "unknown-task";
-
-    for (line in logLines) {
-        mut auto entry = Entry.fromString(line)? else continue;
-
-        // Convert ditto marks into task names.
-        if (entry.isTask) {
-            if (entry.task == "\"")
-                entry.task = dittoTask;
-            else
-                dittoTask = entry.task;
-        }
-
-        result ~= entry;
-    }
-    return result;
-}
-
-string[] logLines() => logPath.readText.strip.split("\n") if logPath.exists else [];
+void writeLines(string[] lines, string path) => path.writeText(lines.join("\n"));
 
 string logPath() {
     auto path = getEnv("XDG_DATA_HOME").notEmpty? else "$(getEnv("HOME"))/.local/share";
-    return "$(path)/ntt/time.log";
+    return "$(path)/ntt/ntt.timedot";
 }
 
 struct Entry {
     /// Time of entry in unix time, corresponds to pings.
-    string marker;
     long time;
     string task;
     long durationMin;
     string comment;
 
-    static (Entry | :else) fromString(string s) {
-        auto words = s.words;
-        // Must have marker, timestamp, task and duration.
-        if (words.length < 4)
-            return :else;
-        auto marker = words[0];
-        auto time = parseDate(words[1])? else return :else;
-        auto task = words[2];
-        auto durationMin = words[3].parseScalar("min")? else return :else;
-
-        return Entry(marker, time, task, durationMin, words[4 .. $].join(" "));
+    string toString() {
+        auto task = "# break" if this.task == "break" else this.task;
+        return "$task  $(durationMin)m  ; $(time.timeOfDay)  $(comment)".strip();
     }
 
-    string toString() => "$marker $(time.formatted)  $task  $(durationMin)min  $comment".strip;
-
-    bool isTask() => marker == "x" && task != "break";
+    bool isTask() => task != "break";
 
     void appendToLog() {
         if (!logPath.exists)
@@ -250,33 +145,63 @@ struct Entry {
         assert(logPath.dirname.exists);
 
         // TODO Use append-to-file op instead of full file rewrite
-        mut auto text = (logPath.readText() if logPath.exists else "");
+        mut auto lines = logPath.readLines;
 
-        // Append newline when starting a new day.
-        auto log = loadLog;
-        if (!log.empty && log[$ - 1].time.day != this.time.day)
-            text ~= "\n";
+        // Do we need to mark a new day?
+        if (lines.latestDay != time.day) {
+            if (!lines.empty)
+                lines ~= "";
 
-        // Append new entry to log.
-        text ~= "$(this)\n";
+            lines ~= "$(time.day)";
+        }
 
-        logPath.writeText(text);
+        lines ~= "$this";
+        lines.writeLines(logPath);
     }
 }
 
-unittest {
-    assert(Entry.fromString("") == :else);
-    assert(Entry.fromString("# Some comment dunno") == :else);
-    assert(Entry.fromString("x 2024-03-13T10:09:06+0200  ntt.base  15min") ==
-        Entry("x", 1710317346, "ntt.base", 15, ""));
-    assert(Entry.fromString("x 2024-03-13T10:09:06+0200  ntt.base  15nmin") ==
-        :else);
+long[] pings(string[] log) {
+    mut auto day = "";
+    mut long[] result = [];
+
+    for (line in log) {
+        if (auto newDay = line.strip().parseDay?) {
+            day = newDay;
+            continue;
+        }
+
+        // Nothing happens until the first day is declared.
+        if (day == "")
+            continue;
+
+        // Look for "; 12:30:45+0200"
+        auto parts = line.split("; ");
+        if (parts.length < 2)
+            continue;
+        auto words = parts[1].words;
+        if (words.empty)
+            continue;
+
+        // Try to compose day and first word after comment into a valid
+        // timestamp. Declare a ping if this succeeds.
+        result ~= "$(day)T$(words[0])".parseTime("%Y-%m-%dT%H:%M:%S%z")? else continue;
+    }
+
+    return result;
 }
 
-/// Pings between latest entry and now (limited to today).
-long[] unaccountedPings(Entry[] entries) {
+string latestDay(string[] log) {
+    mut auto result = "";
+    for (line in log) {
+        if (auto newDay = line.strip().parseDay?)
+            result = newDay;
+    }
+    return result;
+}
+
+long[] unaccountedPings(long[] pings) {
     auto today = now.day;
-    auto limit = entries.latest;
+    auto limit = [max(t) for t in pings];
     mut long[] result;
     mut long t = now.prevPing;
     while (t > limit && t.day == today) {
@@ -287,11 +212,8 @@ long[] unaccountedPings(Entry[] entries) {
     return result.reversed;
 }
 
-/// Latest entry timestamp from list.
-long latest(Entry[] entries) => [max(e.time) for e in entries] if !entries.empty else 0;
 
-/// Return whether logging has started for today.
-bool dayIsStarted(Entry[] entries) => entries.latest.day == now.day;
+bool dayIsStarted(long[] pings) => [max(p) for p in pings ~ [0]].day == now.day;
 
 /// Sleep until it's time to ping
 void cmdSleep() {
@@ -305,7 +227,7 @@ void cmdSleep() {
         sleep(10);
     }
 
-    print("Pinged at $(targetTime.formatted).");
+    print("Pinged at $(targetTime.formatTime("%H:%M:%S")).");
 }
 
 /// Unix time of next ping from now given average ping interval.
@@ -332,89 +254,77 @@ bool isPing(long avgSecs, long t) {
   return (t % avgSecs) == 0;
 }
 
-string formatted(long unixTime) =>
-    "date -d @$unixTime +'%Y-%m-%dT%H:%M:%S%z'".readback.strip;
+/// Parse timedot date formats.
+(string | :else) parseDay(string simpleDate) {
+    alias normalized = "%Y-%m-%d";
 
-(long | :else) parseDate(string datestring) {
-    if (datestring.strip == "") {
-        return :else;
-    }
-
-    if (datestring.strip.startsWith("#")) {
-        return :else;
-    }
-
-    return "date -d $datestring -u +%s".readbackErr.case(
-        int i: :else,
-        string s: s.parseNum?.(:else if (that <= 0 || that > 99999999999) else that));
+    simpleDate.parseTime("%Y-%m-%d").case(long s: return s.formatTime(normalized));
+    simpleDate.parseTime("%Y.%m.%d").case(long s: return s.formatTime(normalized));
+    simpleDate.parseTime("%Y/%m/%d").case(long s: return s.formatTime(normalized));
+    return :else;
 }
 
-unittest
-{
-    assert(parseDate("2006-01-02T15:04:05-0700") == 1136239445);
-    assert(parseDate("xyzzy") == :else);
-    assert(parseDate("") == :else);
-    assert(parseDate("9300-01-01") == :else);
+unittest {
+    assert(parseDay("2010-01-30") == "2010-01-30");
+    assert(parseDay("2010/1/30") == "2010-01-30");
+    assert(parseDay("2010.1.30") == "2010-01-30");
+    assert(parseDay("teapot") == :else);
 }
 
-long now() => "date +%s".readback.parseNum? else assert(false);
+/// Get current unix time.
+long now() => time(null);
+extern(C) long time(void*);
 
-/// Day of unix timestamp in current time zone.
-string day(long unixTime) => unixTime.formatted[0 .. 10];
+/// Day of unix time in current time zone.
+string day(long unixTime) => unixTime.formatTime("%Y-%m-%d");
+
+/// Time of day of unix time in current time zone.
+string timeOfDay(long unixTime) => unixTime.formatTime("%H:%M:%S%z");
 
 extern(C) int sleep(int);
 
-// A version of readback that handles error code return values.
-// FIXME: Replace with a stdlib version once one is available.
-(int | string) readbackErr(string command) {
-    import std.file : readText, remove;
+import c.sys.time : tm;
+
+/// strptime wrapper that reads directly into unix time
+(long | :else) parseTime(string timestamp, string fmt) {
     import std.string : toStringz;
 
-    auto tmp = tmpnam(null).cToString;
-    // XXX: Add hack to pipe stderr to devnull, otherwise date will make noise
-    // about bad dates to our stderr.
-    int iret = neat_runtime_system_iret(command ~ " > " ~ tmp ~ " 2> /dev/null");
-    auto ret = readText(tmp);
-    remove(tmp);
-    if (iret)
-        return iret;
-    return ret;
+    mut tm result;
+
+    if (strptime(timestamp.toStringz, fmt.toStringz, &result) == null)
+        return :else;
+
+    return mktime(&result);
 }
 
-private extern(C) char* tmpnam(char*);
-private extern(C) int neat_runtime_system_iret(string command);
+private extern(C) char* strptime(char*, char*, tm*);
+private extern(C) long mktime(tm*);
+
+unittest {
+    assert("2024-03-15T12:44:52+0200".parseTime("%Y-%m-%dT%H:%M:%S%z") == 1710499492);
+    assert("potato".parseTime("%Y-%m-%dT%H:%M:%S%z") == :else);
+}
+
+string formatTime(long unixTime, string fmt) {
+    import std.string : toStringz;
+
+    mut long t = unixTime;
+    auto buf = new char mut[](64);
+    mut tm result;
+    localtime_r(&t, &result);
+    strftime(buf.ptr, buf.length, fmt.toStringz, &result);
+
+    return buf.ptr.cToString;
+}
+
+private extern(C) size_t strftime(char*, size_t, char*, tm*);
+private extern(C) tm* localtime_r(long* timep, tm* result);
+
+unittest {
+    assert(1710499492.formatTime("%Y-%m-%dT%H:%M:%S%z") == "2024-03-15T12:44:52+0200");
+}
 
 string[] words(string s) => [a for a in s.split(" ") where !a.empty];
-
-(long | :else) parseScalar(string s, string unit) {
-    string scalar = s[0 .. $ - unit.length] if s.endsWith(unit) else return :else;
-    return scalar.parseNum;
-}
-
-unittest {
-    assert("15min".parseScalar("min") == 15);
-    assert("".parseScalar("min") == :else);
-    assert("15".parseScalar("min") == :else);
-    assert("15nmin".parseScalar("min") == :else);
-}
-
-/// Robust integer parser.
-(long | :else) parseNum(string s) {
-    import neat.runtime : atol;
-
-    auto s = s.strip;
-    long ret = atol(s);
-    return ret if "$ret" == s else :else;
-}
-
-unittest {
-    assert(parseNum("123") == 123);
-    assert(parseNum("-123") == -123);
-    assert(parseNum("-") == :else);
-    assert(parseNum("") == :else);
-    assert(parseNum("123gfp") == :else);
-    assert(parseNum("a123") == :else);
-}
 
 T[] reversed(T)(T[] xs) => [xs[$ - i - 1] for i in 0..xs.length];
 
@@ -427,14 +337,3 @@ unittest {
 }
 
 alias notEmpty = a => a if !a.empty else :else;
-
-/// Print without \n
-void prit(string str) {
-    import neat.runtime.stdlib : fflush, printf,
-        neat_runtime_lock_stdout, neat_runtime_unlock_stdout;
-
-    neat_runtime_lock_stdout;
-    printf("%.*s".ptr, cast(int) str.length, str.ptr);
-    fflush(stdout);
-    neat_runtime_unlock_stdout;
-}

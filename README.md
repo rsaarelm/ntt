@@ -9,16 +9,18 @@ Compile `ntt` by running `make` (you need to have `gcc` installed) and put it so
 The daemon will alert you at random intervals.
 At each interval, if you were working, type `ntt task [id] [optional comment]` on command line (if you omit the id, it'll reuse the one from your previous task entry).
 If you were taking a break, type `ntt break [optional comment]`, or just ignore the alert.
-Work datapoints will be collected in your work log file at `~/.local/share/ntt/time.log` and approximate the amount of time you actually worked the more entries you make.
+Work datapoints will be collected in your work log file at `~/.local/share/ntt/ntt.timedot` and approximate the amount of time you actually worked the more entries you make.
 
-You can export your hours in hledger's [timedot format](https://hledger.org/time-planning.html) with `ntt export` (it just prints to stdout, use pipe commands to direct it to a file).
+The log is kept in hledger's [timedot format](https://hledger.org/time-planning.html) and can be processed with hledger:
 
 ```
-ntt export > /tmp/work.timedot
-hledger -f /tmp/work.timedot print
+hledger -f ~/.local/share/ntt/ntt.timedot balance -t
 ```
 
 ## Misc notes
+
+The average ping interval is fixed at 45 minutes.
+Adjust the constant in `ntt.nt` and recompile if you want to change this.
 
 When starting work for a day, you can immediately log a break for the previous ping time, even if a ping hasn't fired yet.
 Once at least one entry exists for the day, `ntt` can start reporting the number of missing pings between now and the last entry.
@@ -26,4 +28,4 @@ Once at least one entry exists for the day, `ntt` can start reporting the number
 A convention is to start comments with "--".
 If you do `ntt task -- Comment`, without specifying a task, the entry will be logged to have the same task as your previous task id.
 
-Use `:` as category separator for your tasks so Hledger can parse the hierarchy, `study:calculus`, `cleaning:toilet`, `job:devops` etc.
+Use `:` as category separator for your tasks so hledger can parse the hierarchy, `study:calculus`, `cleaning:toilet`, `job:devops` etc.
