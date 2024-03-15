@@ -50,7 +50,9 @@ void cmdStatus(string[] args) {
     auto unaccounted = pings.unaccountedPings;
 
     if (result.has("minimal")) {
-        if (!unaccounted.empty)
+        if (!pings.dayIsStarted)
+            print("*");
+        else if (!unaccounted.empty)
             print("$(unaccounted.length)");
         return;
     }
@@ -87,11 +89,11 @@ void cmdTask(string[] args) {
             Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
-            print("Added $(unaccounted.length - 1) breaks");
+            print("Added $(unaccounted.length - 1) breaks.");
     }
 
     Entry(unaccounted[$ - 1], args[0], pingIntervalMinutes, args[1 .. $].join(" ")).appendToLog;
-    print("Clocked $(pingIntervalMinutes)m on $(args[0]) at $(unaccounted[$ - 1].formatTime("%H:%M:%S"))");
+    print("Clocked $(pingIntervalMinutes)m on $(args[0]) at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
 }
 
 void cmdBreak(string[] args) {
@@ -109,11 +111,11 @@ void cmdBreak(string[] args) {
             Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
-            print("Added $(unaccounted.length - 1) breaks");
+            print("Added $(unaccounted.length - 1) breaks.");
     }
 
     Entry(unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
-    print("Clocked break at $(unaccounted[$ - 1].formatTime("%H:%M:%S"))");
+    print("Clocked break at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
 }
 
 string[] readLines(string path) => path.readText.strip.split("\n") if path.exists else [];
@@ -217,7 +219,7 @@ bool dayIsStarted(long[] pings) => [max(p) for p in pings ~ [0]].day == now.day;
 
 /// Sleep until it's time to ping
 void cmdSleep() {
-    print("Sleeping until next ping, average ping interval is $pingIntervalMinutes min");
+    print("Sleeping until next ping, average ping interval is $pingIntervalMinutes min.");
     long targetTime = now.nextPing;
 
     // Don't try to sleep all the way to the target time at once, instead take
@@ -227,7 +229,7 @@ void cmdSleep() {
         sleep(10);
     }
 
-    print("Pinged at $(targetTime.formatTime("%H:%M:%S")).");
+    print("Ping at $(targetTime.formatTime("%H:%M:%S")).");
 }
 
 /// Unix time of next ping from now given average ping interval.
