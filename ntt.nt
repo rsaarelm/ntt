@@ -57,10 +57,10 @@ void cmdStatus(string[] args) {
         return;
     }
 
-    if (unaccounted.empty) {
-        print("Nothing to do yet, wait for next ping.");
-    } else if (!pings.dayIsStarted) {
+    if (!pings.dayIsStarted) {
         print("Nothing logged today yet, tag the last ping to start working.");
+    } else if (unaccounted.empty) {
+        print("Nothing to do yet, wait for next ping.");
     } else {
         print("Unaccounted pings after last entry today:");
         for (p in unaccounted) {
@@ -279,6 +279,7 @@ string day(long unixTime) => unixTime.formatTime("%Y-%m-%d");
 /// Time of day of unix time in current time zone.
 string timeOfDay(long unixTime) => unixTime.formatTime("%H:%M:%S%z");
 
+// TODO: Use stdlib Thread.sleep instead
 extern(C) int sleep(int);
 
 import c.sys.time : tm;
@@ -324,6 +325,7 @@ unittest {
 
 string[] words(string s) => [a for a in s.split(" ") where !a.empty];
 
+// TODO: Use stdlib reverse func
 T[] reversed(T)(T[] xs) => [xs[$ - i - 1] for i in 0..xs.length];
 
 unittest {
