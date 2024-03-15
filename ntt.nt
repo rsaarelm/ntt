@@ -54,7 +54,6 @@ void cmdStatus(string[] args) {
         return;
     }
 
-    print("Average ping interval is $pingIntervalMinutes min");
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
     } else if (!pings.dayIsStarted) {
