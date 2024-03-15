@@ -249,8 +249,17 @@ struct Entry {
             system("mkdir -p $(logPath.dirname)");
         assert(logPath.dirname.exists);
 
-        // TODO Use append-to-file op instead of full rewrite
-        auto text = (logPath.readText() if logPath.exists else "") ~ "$(this)\n";
+        // TODO Use append-to-file op instead of full file rewrite
+        mut auto text = (logPath.readText() if logPath.exists else "");
+
+        // Append newline when starting a new day.
+        auto log = loadLog;
+        if (!log.empty && log[$ - 1].time.day != this.time.day)
+            text ~= "\n";
+
+        // Append new entry to log.
+        text ~= "$(this)\n";
+
         logPath.writeText(text);
     }
 }
