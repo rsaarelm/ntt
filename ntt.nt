@@ -255,12 +255,8 @@ bool isPing(long avgSecs, long t) {
 
 /// Parse timedot date formats.
 (string | :else) parseDay(string simpleDate) {
-    alias normalized = "%Y-%m-%d";
-
-    simpleDate.parseTime("%Y-%m-%d").case(long s: return s.formatTime(normalized));
-    simpleDate.parseTime("%Y.%m.%d").case(long s: return s.formatTime(normalized));
-    simpleDate.parseTime("%Y/%m/%d").case(long s: return s.formatTime(normalized));
-    return :else;
+    alias attempt = fmt => simpleDate.parseTime(fmt)?.formatTime("%Y-%m-%d") else :else;
+    return attempt("%Y-%m-%d")? else attempt("%Y.%m.%d")? else attempt("%Y/%m/%d");
 }
 
 unittest {
