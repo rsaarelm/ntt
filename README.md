@@ -7,7 +7,7 @@ Written in [Neat](https://neat-lang.github.io/), it's not very common yet so the
 
 Compile `ntt` by running `make` (you need to have `gcc` installed) and put it somewhere in your path, then start `ntt-daemon.sh` in a shell when you work.
 The daemon will alert you at random intervals.
-After each alert, if you were working, type `ntt task id <optional comment>` on command line.
+After each alert, if you were working, type `ntt done id <optional comment>` on command line.
 If you were taking a break, type `ntt break <optional comment>`, or just ignore the alert.
 Work datapoints will be collected in your work log file at `~/.local/share/ntt/ntt.timedot` and approximate the amount of time you actually worked the more entries you make.
 
