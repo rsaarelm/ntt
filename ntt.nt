@@ -13,43 +13,62 @@ import std.string;
 alias pingIntervalMinutes = 45;
 
 void main(string[] args) {
-    if (args.length < 2)
-        return cmdStatus(args[1 .. $]);
-    else if (args[1] == "status")
-        return cmdStatus(args[2 .. $]);
-    else if (args[1] == "sleep")
-        cmdSleep;
-    else if (args[1] == "task" || args[1] == "t")
-        cmdTask(args[2 .. $]);
-    else if (args[1] == "break" || args[1] == "b")
-        cmdBreak(args[2 .. $]);
-    else
+    auto parser = new UnixArgParser;
+    parser.add("m", "minimal", :noArg, "Show a very short status string");
+    parser.add("f", "fill", :noArg, "Record copies of task up to previous recorded ping");
+    parser.add("h", "help", :noArg, "Show help");
+
+    ArgResult opts = parser.parse(args).case(Error: ({ usage(); return exit(1); }));
+
+    if (opts.has("help")) {
+        usage();
+        exit(0);
+    }
+
+    if (opts.remaining.length < 2)
+        return cmdStatus(opts);
+
+    string cmd = opts.remaining[1];
+    if (cmd == "status")
+        return cmdStatus(opts);
+    else if (cmd == "sleep")
+        return cmdSleep;
+    else if (cmd == "done" || cmd == "d") {
+        if (opts.remaining.length < 3) {
+            usage();
+            exit(1);
+        }
+        auto task = opts.remaining[2];
+        auto comment = opts.remaining[3 .. $].join(" ");
+        cmdDone(opts, task, comment);
+    } else if (cmd == "break" || cmd == "b")
+        cmdBreak(opts, args[2 .. $].join(" "));
+    else {
         usage;
+        exit(1);
+    }
 }
 
 void usage() {
-    print("Usage: ntt <command> [<args>]");
-    print("    status                     Display current status (default command)");
-    print("      --minimal                  Display only unaccounted ping count");
-    print("    task [id] ([message])      Mark last ping as worked on task [id]");
-    print("    break ([message])          Mark last ping as break time");
-    print("");
-    print("    sleep                      Delay until the time of next task ping");
+    print("Usage: ntt <command> [<args>]
+
+   status [-m]                 Display current status (default command)
+   done [-f] <id> [<message>]  Mark last ping as worked on task [id]
+   break [<message>]           Mark last ping as break time
+
+   sleep                       Delay until the time of next task ping
+
+Options:
+   -f --fill                   Record copies of task up to previous recorded ping
+   -m --minimal                Show a very short status string");
+
 }
 
-void cmdStatus(string[] args) {
-    auto parser = new UnixArgParser;
-    parser.add("m", "minimal", :noArg, "Display only unaccounted ping count");
-
-    // TODO: Print usage instead of just crashing (need to rewrite case block
-    // to allow multi-statement response)
-    auto result = parser.parse(args)
-        .case(Error: assert(false));
-
+void cmdStatus(ArgResult opts) {
     auto pings = logPath.readLines.pings;
-    auto unaccounted = pings.unaccountedPings;
+    auto unaccounted = pings.unaccountedToday;
 
-    if (result.has("minimal")) {
+    if (opts.has("minimal")) {
         if (!pings.dayIsStarted)
             print("*");
         else if (!unaccounted.empty)
@@ -69,22 +88,31 @@ void cmdStatus(string[] args) {
     }
 }
 
-void cmdTask(string[] args) {
-    if (args.empty) {
-        usage();
-        return;
-    }
-
+void cmdDone(ArgResult opts, string task, string comment) {
     auto pings = logPath.readLines.pings;
-    auto unaccounted = pings.unaccountedPings;
+    auto unaccounted = pings.unaccountedToday;
 
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
         return;
     }
 
-    if (pings.dayIsStarted) {
-        // Not the first entry, fill in breaks.
+    if (opts.has("fill")) {
+        auto backlist = pings.unaccountedTotal;
+        // The last one is the one we'd fill anyway, ignore that.
+        if (backlist.length > 1) {
+            for (auto i in 0 .. backlist.length - 1)
+                Entry(backlist[i], task, pingIntervalMinutes, comment).appendToLog;
+
+            print("Backfilled $(backlist.length - 1) copies of done task");
+        }
+
+        if (pings.empty) {
+            assert(backlist.empty);
+            print("No previous pings recorded, cannot backfill");
+        }
+    } else if (pings.dayIsStarted) {
+        // Not the first entry (and we're not doing backfill), fill in breaks.
         for (auto i in 0 .. unaccounted.length - 1) {
             Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
@@ -92,13 +120,13 @@ void cmdTask(string[] args) {
             print("Added $(unaccounted.length - 1) breaks.");
     }
 
-    Entry(unaccounted[$ - 1], args[0], pingIntervalMinutes, args[1 .. $].join(" ")).appendToLog;
-    print("Clocked $(pingIntervalMinutes)m on $(args[0]) at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
+    Entry(unaccounted[$ - 1], task, pingIntervalMinutes, comment).appendToLog;
+    print("Clocked $(pingIntervalMinutes)m on $(task) at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
 }
 
-void cmdBreak(string[] args) {
+void cmdBreak(ArgResult opts, string comment) {
     auto pings = logPath.readLines.pings;
-    auto unaccounted = pings.unaccountedPings;
+    auto unaccounted = pings.unaccountedToday;
 
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
@@ -114,7 +142,7 @@ void cmdBreak(string[] args) {
             print("Added $(unaccounted.length - 1) breaks.");
     }
 
-    Entry(unaccounted[$ - 1], "break", pingIntervalMinutes, args[0 .. $].join(" ")).appendToLog;
+    Entry(unaccounted[$ - 1], "break", pingIntervalMinutes, comment).appendToLog;
     print("Clocked break at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
 }
 
@@ -201,8 +229,17 @@ string latestDay(string[] log) {
     return result;
 }
 
-long[] unaccountedPings(long[] pings) {
+long[] unaccountedToday(long[] pings) {
     auto today = now.day;
+
+    if (pings.empty) {
+        auto prev = now.prevPing;
+        if (prev.day == today)
+            return [prev];
+        else
+            return [];
+    }
+
     auto limit = [max(t) for t in pings];
     mut long[] result;
     mut long t = now.prevPing;
@@ -214,6 +251,20 @@ long[] unaccountedPings(long[] pings) {
     return result.reversed;
 }
 
+long[] unaccountedTotal(long[] pings) {
+    if (pings.empty)
+        return [];
+
+    auto limit = [max(t) for t in pings];
+    mut long[] result;
+    mut long t = now.prevPing;
+    while (t > limit) {
+        result ~= t;
+        t = t.prevPing;
+    }
+
+    return result.reversed;
+}
 
 bool dayIsStarted(long[] pings) => [max(p) for p in pings ~ [0]].day == now.day;
 
@@ -281,6 +332,9 @@ string timeOfDay(long unixTime) => unixTime.formatTime("%H:%M:%S%z");
 
 // TODO: Use stdlib Thread.sleep instead
 extern(C) int sleep(int);
+
+// TODO: Use stdlib version when there's one
+extern(C) bottom exit(int);
 
 import c.sys.time : tm;
 
