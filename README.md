@@ -27,6 +27,10 @@ Adjust the constant in `ntt.nt` and recompile if you want to change this.
 
 You may want to examine and customize the `ntt-daemon.sh` script to use different shell programs to produce an alert you like.
 
+You may want to edit your time log manually, eg. rewrite in-between breaks into tasks.
+The special part `ntt` looks for on each line to recognize it as a ping record is a trailing comment that starts with a time-of-day value, `; 15:04:05`.
+You can have other timekeeping data in the same file without this marker and `ntt` will just ignore it.
+
 When starting work for a day, you can immediately log a break for the previous ping time, even if a ping hasn't fired yet.
 Once at least one entry exists for the day, `ntt` can start reporting the number of missing pings between now and the last entry.
 
