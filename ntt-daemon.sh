@@ -7,7 +7,6 @@ set -e
 # ntt must be compiled and in path before this is run.
 while [ true ]; do
     ntt sleep
-    xrefresh -solid orange
     notify-send ping
     aplay -q $(dirname $0)/bell.wav
     # Uncomment if you want to snapshot your desktop at ping time.
