@@ -117,7 +117,7 @@ void cmdDone(ArgResult opts, string task, string comment) {
             Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
-            print("Added $(unaccounted.length - 1) breaks.");
+            print("Added $(unaccounted.length - 1) in-between breaks.");
     }
 
     Entry(unaccounted[$ - 1], task, pingIntervalMinutes, comment).appendToLog;
@@ -139,7 +139,7 @@ void cmdBreak(ArgResult opts, string comment) {
             Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
         }
         if (unaccounted.length > 1)
-            print("Added $(unaccounted.length - 1) breaks.");
+            print("Added $(unaccounted.length - 1) in-between breaks.");
     }
 
     Entry(unaccounted[$ - 1], "break", pingIntervalMinutes, comment).appendToLog;
