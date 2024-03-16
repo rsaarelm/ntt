@@ -9,7 +9,7 @@ while [ true ]; do
     ntt sleep
     xrefresh -solid orange
     notify-send ping
-    aplay -q bell.wav
+    aplay -q $(dirname $0)/bell.wav
     # Uncomment if you want to snapshot your desktop at ping time.
     # scrot "/tmp/screenshot-$(date +'%Y-%m-%dT%H:%M:%S%z').png"
 done
