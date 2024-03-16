@@ -18,7 +18,7 @@ void main(string[] args) {
     parser.add("f", "fill", :noArg, "Record copies of task up to previous recorded ping");
     parser.add("h", "help", :noArg, "Show help");
 
-    ArgResult opts = parser.parse(args).case(Error: ({ usage(); return exit(1); }));
+    auto opts = parser.parse(args).case(Error: ({ usage(); return exit(1); }));
 
     if (opts.has("help")) {
         usage();
