@@ -148,7 +148,7 @@ void cmdBreak(ArgResult opts, string comment) {
 
 string[] readLines(string path) => path.readText.strip.split("\n") if path.exists else [];
 
-void writeLines(string[] lines, string path) => path.writeText(lines.join("\n"));
+void writeLines(string[] lines, string path) => path.writeText(lines.join("\n") ~ "\n");
 
 string logPath() {
     auto path = getEnv("XDG_DATA_HOME").notEmpty? else "$(getEnv("HOME"))/.local/share";
