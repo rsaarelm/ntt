@@ -52,15 +52,15 @@ void main(string[] args) {
 void usage() {
     print("Usage: ntt <command> [<args>]
 
-   status [-m]                 Display current status (default command)
-   done [-f] <id> [<message>]  Mark last ping as worked on task [id]
-   break [<message>]           Mark last ping as break time
+   status [-m]                  Display current status (default command)
+   done [-f] <task-id> [<msg>]  Mark last ping as worked on task <task-id>, with optional comment
+   break [<msg>]                Mark last ping as break time, with optional comment
 
-   sleep                       Delay until the time of next task ping
+   sleep                        Delay until the time of next task ping
 
 Options:
-   -f --fill                   Record copies of task up to previous recorded ping
-   -m --minimal                Show a very short status string");
+   -f --fill                    Record copies of task up to previous recorded ping
+   -m --minimal                 Show a very short status string");
 
 }
 
