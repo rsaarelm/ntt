@@ -428,11 +428,10 @@ unittest {
 alias notEmpty = a => a if !a.empty else :else;
 
 string timeDisplay(long seconds) {
-    alias digits = n => ("0$n" if n < 10 else "$n");
     if (seconds < 3600) {
-        return "$((seconds / 60).digits)m";
+        return "$(seconds / 60)m";
     } else {
-        return "$(seconds / 3600)h $(((seconds % 3600) / 60).digits)m";
+        return "$(seconds / 3600)h $((seconds % 3600) / 60)m";
     }
 }
 
