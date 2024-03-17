@@ -204,7 +204,7 @@ long[] pings(string[] log) {
         if (day == "")
             continue;
 
-        // Look for "; 12:30:45"
+        // Look for "; 12:30:45+0200"
         auto parts = line.split("; ");
         if (parts.length < 2)
             continue;
@@ -214,7 +214,7 @@ long[] pings(string[] log) {
 
         // Try to compose day and first word after comment into a valid
         // timestamp. Declare a ping if this succeeds.
-        result ~= "$(day)T$(words[0])".parseTime("%Y-%m-%dT%H:%M:%S")? else continue;
+        result ~= "$(day)T$(words[0])".parseTime("%Y-%m-%dT%H:%M:%S%z")? else continue;
     }
 
     return result;
@@ -348,7 +348,7 @@ extern(C) long time(void*);
 string day(long unixTime) => unixTime.formatTime("%Y-%m-%d");
 
 /// Time of day of unix time in current time zone.
-string timeOfDay(long unixTime) => unixTime.formatTime("%H:%M:%S");
+string timeOfDay(long unixTime) => unixTime.formatTime("%H:%M:%S%z");
 
 // TODO: Use stdlib Thread.sleep instead
 extern(C) int sleep(int);
@@ -362,21 +362,29 @@ import c.sys.time : tm;
 (long | :else) parseTime(string timestamp, string fmt) {
     import std.string : toStringz;
 
+    // Are we figuring zoned or naive times?
+    auto zoneSpecified = fmt.find("%z") != -1;
+
     mut tm result;
 
     if (strptime(timestamp.toStringz, fmt.toStringz, &result) == null)
         return :else;
 
-    return mktime(&result);
+    auto parsedTz = result.tm_gmtoff;
+
+    auto ret = mktime(&result);
+
+    // mktime rewrites the time struct to have system TZ offset.
+    auto systemTz = result.tm_gmtoff;
+
+    if (zoneSpecified)
+        return ret + systemTz - parsedTz;
+    else
+        return ret;
 }
 
 private extern(C) char* strptime(char*, char*, tm*);
 private extern(C) long mktime(tm*);
-
-unittest {
-    assert("2024-03-15T12:44:52".parseTime("%Y-%m-%dT%H:%M:%S") == 1710499492);
-    assert("potato".parseTime("%Y-%m-%dT%H:%M:%S") == :else);
-}
 
 string formatTime(long unixTime, string fmt) {
     import std.string : toStringz;
@@ -390,12 +398,19 @@ string formatTime(long unixTime, string fmt) {
     return buf.ptr.cToString;
 }
 
+unittest {
+    assert("2006-01-02T15:04:05-0700".parseTime("%Y-%m-%dT%H:%M:%S%z") == 1136239445);
+    assert("2024-03-15T12:44:52+0200".parseTime("%Y-%m-%dT%H:%M:%S%z") == 1710499492);
+    assert("potato".parseTime("%Y-%m-%dT%H:%M:%S%z") == :else);
+
+    auto t = now;
+    assert(t.formatTime("%Y-%m-%dT%H:%M:%S%z").parseTime("%Y-%m-%dT%H:%M:%S%z") == t);
+    assert(t.formatTime("%Y-%m-%dT%H:%M:%S").parseTime("%Y-%m-%dT%H:%M:%S") == t);
+}
+
+
 private extern(C) size_t strftime(char*, size_t, char*, tm*);
 private extern(C) tm* localtime_r(long* timep, tm* result);
-
-unittest {
-    assert(1710499492.formatTime("%Y-%m-%dT%H:%M:%S") == "2024-03-15T12:44:52");
-}
 
 string[] words(string s) => [a for a in s.split(" ") where !a.empty];
 
