@@ -14,6 +14,7 @@ ntt: $(NEAT) ntt.nt
 test: $(NEAT) ntt.nt
 	$(NEAT) -j --no-main ntt.nt -o test --unittest
 	./test
+	rm ./test
 
 $(NEAT): $(NEAT_PKG)
 	tar xf $(NEAT_PKG)
