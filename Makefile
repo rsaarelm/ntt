@@ -14,6 +14,9 @@ ntt: $(NEAT) ntt.nt
 test: $(NEAT) ntt.nt
 	$(NEAT) -j --no-main ntt.nt -o test --unittest
 	./test
+	# See if the test still works in different TZs
+	TZ=Asia/Tokyo ./test
+	TZ=Europe/London ./test
 	rm ./test
 
 $(NEAT): $(NEAT_PKG)
