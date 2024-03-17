@@ -308,7 +308,23 @@ bool isPing(long avgSecs, long t) {
   t ^= t << 13;
   t ^= t >> 7;
   t ^= t << 17;
+
+  t &= 0x7fffffffffffffff;
+
   return (t % avgSecs) == 0;
+}
+
+unittest {
+    for (t in 10000000000 .. 10000010000) {
+        auto shouldBePing =
+            t == 10000003971 ||
+            t == 10000007292 ||
+            t == 10000007434 ||
+            t == 10000008304 ||
+            t == 10000009711;
+
+        assert(isPing(2700, t) == shouldBePing);
+    }
 }
 
 /// Parse timedot date formats.
