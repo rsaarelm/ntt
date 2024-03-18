@@ -69,17 +69,18 @@ void cmdStatus(ArgResult opts) {
     auto unaccounted = pings.unaccountedToday;
 
     if (opts.has("minimal")) {
-        if (!pings.dayIsStarted)
-            print("*");
+        if (!pings.dayIsStarted && !unaccounted.empty)
+            print("1");
         else if (!unaccounted.empty)
             print("$(unaccounted.length)");
         return;
     }
 
-    if (!pings.dayIsStarted) {
-        print("Nothing logged today yet, tag the last ping to start working.");
-    } else if (unaccounted.empty) {
+    if (unaccounted.empty)
         print("Nothing to do yet, wait for next ping.");
+    else if (!pings.dayIsStarted) {
+        print("Nothing logged today yet, tag the last ping to start working:");
+        print("* $(unaccounted[$ - 1].formatTime("%H:%M:%S"))");
     } else {
         print("Unaccounted pings after last entry today:");
         for (p in unaccounted) {
