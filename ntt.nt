@@ -92,6 +92,7 @@ void cmdStatus(ArgResult opts) {
 void cmdDone(ArgResult opts, string task, string comment) {
     auto pings = logPath.readLines.pings;
     auto unaccounted = pings.unaccountedToday;
+    mut long duration = pingIntervalMinutes;
 
     if (unaccounted.empty) {
         print("Nothing to do yet, wait for next ping.");
@@ -100,18 +101,8 @@ void cmdDone(ArgResult opts, string task, string comment) {
 
     if (opts.has("fill")) {
         auto backlist = pings.unaccountedTotal;
-        // The last one is the one we'd fill anyway, ignore that.
-        if (backlist.length > 1) {
-            for (auto i in 0 .. backlist.length - 1)
-                Entry(backlist[i], task, pingIntervalMinutes, comment).appendToLog;
-
-            print("Backfilled $(backlist.length - 1) copies of done task");
-        }
-
-        if (pings.empty) {
-            assert(backlist.empty);
-            print("No previous pings recorded, cannot backfill");
-        }
+        if (!backlist.empty)
+            duration = pingIntervalMinutes * backlist.length;
     } else if (pings.dayIsStarted) {
         // Not the first entry (and we're not doing backfill), fill in breaks.
         for (auto i in 0 .. unaccounted.length - 1) {
@@ -121,8 +112,8 @@ void cmdDone(ArgResult opts, string task, string comment) {
             print("Added $(unaccounted.length - 1) in-between breaks.");
     }
 
-    Entry(unaccounted[$ - 1], task, pingIntervalMinutes, comment).appendToLog;
-    print("Clocked $(pingIntervalMinutes)m on $(task) at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
+    Entry(unaccounted[$ - 1], task, duration, comment).appendToLog;
+    print("Clocked $((duration * 60).timeDisplay) on $(task) at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
 }
 
 void cmdBreak(ArgResult opts, string comment) {
@@ -165,7 +156,21 @@ struct Entry {
 
     string toString() {
         auto task = "# break" if this.task == "break" else this.task;
-        return "$task  $(durationMin)m  ; $(time.timeOfDay)  $(comment)".strip();
+        mut string duration = "$(durationMin)m";
+        if (durationMin > 60) {
+            // TODO non-horrible float print with 2 decimal precision.
+            auto num = "$(durationMin * 100 / 60)";
+            auto wholeHours = num[0.. $ - 2];
+            auto decHours = num[$ - 2 .. $];
+            if (decHours == "00")
+                duration = "$(wholeHours)h";
+            else if (decHours.endsWith("0"))
+                duration = "$(wholeHours).$(decHours[0])h";
+            else
+                duration = "$(wholeHours).$(decHours)h";
+        } else
+            duration = "$(durationMin)m";
+        return "$task  $duration  ; $(time.timeOfDay)  $(comment)".strip();
     }
 
     bool isTask() => task != "break";
