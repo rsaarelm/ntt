@@ -3,6 +3,7 @@ module ntt;
 macro import std.macro.assert;
 macro import std.macro.listcomprehension;
 
+import std.algorithm;
 import std.argparse;
 import std.error;
 import std.file;
@@ -33,6 +34,8 @@ void main(string[] args) {
         return cmdStatus(opts);
     else if (cmd == "sleep")
         return cmdSleep;
+    else if (cmd == "missed")
+        return cmdMissed;
     else if (cmd == "done" || cmd == "d") {
         if (opts.remaining.length < 3) {
             usage();
@@ -55,6 +58,7 @@ void usage() {
    status [-m]                  Display current status (default command)
    done [-f] <task-id> [<msg>]  Mark last ping as worked on task <task-id>, with optional comment
    break [<msg>]                Mark last ping as break time, with optional comment
+   missed                       Show missed pings for the last 24 hours
 
    sleep                        Delay until the time of next task ping
 
@@ -100,16 +104,9 @@ void cmdDone(ArgResult opts, string task, string comment) {
     }
 
     if (opts.has("fill")) {
-        auto backlist = pings.unaccountedTotal;
+        auto backlist = pings.unaccountedAfter;
         if (!backlist.empty)
             duration = pingIntervalMinutes * backlist.length;
-    } else if (pings.dayIsStarted) {
-        // Not the first entry (and we're not doing backfill), fill in breaks.
-        for (auto i in 0 .. unaccounted.length - 1) {
-            Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
-        }
-        if (unaccounted.length > 1)
-            print("Added $(unaccounted.length - 1) in-between breaks.");
     }
 
     Entry(unaccounted[$ - 1], task, duration, comment).appendToLog;
@@ -125,17 +122,30 @@ void cmdBreak(ArgResult opts, string comment) {
         return;
     }
 
-    if (pings.dayIsStarted) {
-        // Not the first entry, fill in breaks.
-        for (auto i in 0 .. unaccounted.length - 1) {
-            Entry(unaccounted[i], "break", pingIntervalMinutes, "").appendToLog;
-        }
-        if (unaccounted.length > 1)
-            print("Added $(unaccounted.length - 1) in-between breaks.");
-    }
-
     Entry(unaccounted[$ - 1], "break", pingIntervalMinutes, comment).appendToLog;
     print("Clocked break at $(unaccounted[$ - 1].formatTime("%H:%M:%S")).");
+}
+
+void cmdMissed() {
+    // Reverse pings so it's faster to linearly find recent ones.
+    auto pings = logPath.readLines.pings.reversed;
+    auto t0 = now;
+    mut auto t = (t0 - 24 * 60 * 60).nextPing;
+    mut auto currentDay = "";
+    print("Missed pings during last 24h:");
+    while (t < t0) {
+        if (!pings.any(x => x == t)) {
+            if (currentDay != t.day) {
+                // Changing day after printing has started, print newline.
+                if (currentDay != "")
+                    print("");
+                print("$(t.day)");
+                currentDay = t.day;
+            }
+            print("_  $(pingIntervalMinutes)m  ; $(t.formatTime("%H:%M:%S%z"))");
+        }
+        t = t.nextPing;
+    }
 }
 
 string[] readLines(string path) => path.readText.strip.split("\n") if path.exists else [];
@@ -257,7 +267,8 @@ long[] unaccountedToday(long[] pings) {
     return result.reversed;
 }
 
-long[] unaccountedTotal(long[] pings) {
+/// Return list of unaccounted pings after the last ping in sequence
+long[] unaccountedAfter(long[] pings) {
     if (pings.empty)
         return [];
 
